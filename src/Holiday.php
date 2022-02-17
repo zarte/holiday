@@ -42,6 +42,8 @@ class Holiday
      */
     public  function getDayStatus(int $day):int
     {
+        //默认中国标准时间
+        date_default_timezone_set('PRC');
         if(!date('Ymd',$day)){
             throw new \Exception('day format error!');
         }
@@ -73,6 +75,8 @@ class Holiday
      */
     public function getDifferSeconds(int $stattime,int $endtime):int
     {
+        //默认中国标准时间
+        date_default_timezone_set('PRC');
         if($stattime>=$endtime){
             $tmp = $endtime;
             $endtime = $stattime;
