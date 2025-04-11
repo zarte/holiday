@@ -6,6 +6,7 @@ class Holiday
     private $filepath='./';
     private $filenamepre='holiday_';
     private $apiurl='https://sp1.baidu.com/8aQDcjqpAAV3otqbppnN2DJv/api.php';
+    private $apiurl2='https://opendata.baidu.com/data/inner';
     public $errmsg ='';
 
     public function __construct()
@@ -158,10 +159,11 @@ class Holiday
         }
     }
     private function downFile($year){
+        return $this->downFilev2($year);
         //从百度接口获取
         $tn='wisetpl';
         $format='json';
-        $resource_id='39043';
+        $resource_id='52109';
         date_default_timezone_set('PRC');
         $month=1;
         $yeardatalist = array();
@@ -215,6 +217,67 @@ class Holiday
             }else{
                 throw new \Exception('get month:'.$month.' fail');
             }
+        }
+        if(!$yeardatalist){
+            throw new \Exception('get year:'.$year.' data fail');
+        }
+        //存储数据
+        $res = file_put_contents($this->filepath.$this->filenamepre.$year.'.data',json_encode($yeardatalist));
+        if(!$res){
+            throw new \Exception('file_put_contents year:'.$year.' fail');
+        }
+        return true;
+    }
+
+    private function downFilev2($year){
+        //从百度接口获取
+        $tn='reserved_all_res_tn';
+        $format='json';
+        $resource_id='52109';
+        $query=urlencode('法定节假日');
+        date_default_timezone_set('PRC');
+      
+        $yeardatalist = array();
+        $t=time();
+        $cb='op_aladdin_callback'.$t;
+        $url = $this->apiurl2.'?tn='.$tn.'&format='.$format.'&resource_id='.$resource_id.'&query='.$query.'&year='.$year.'&t='.$t.'&apiType=holidayData';
+        $return = $this->httpget($url,array(
+        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.82 Safari/537.36'
+        ));
+        if($return){
+            $return = json_decode($return,true); 
+            if($return && isset($return['Result'])  && $return['Result'][0] 
+            && isset($return['Result'][0]['DisplayData'])
+            && isset($return['Result'][0]['DisplayData']['resultData'])
+            && isset($return['Result'][0]['DisplayData']['resultData']['tplData'])
+            && isset($return['Result'][0]['DisplayData']['resultData']['tplData']['data'])){
+                $list = $return['Result'][0]['DisplayData']['resultData']['tplData']['data'];
+                foreach($list as $item){
+                    foreach($item['holidayList'] as $v){
+                         //假日
+                         $yeardatalist[]=array(
+                            'status'=>1,
+                            'date'=>date('Ymd',strtotime($v)),
+                            'term'=>''
+                        );
+                    }
+                    if($item['workDay']){
+                        $workday = explode(',',$item['workDay']);
+                        foreach($workday as $v){
+                              //补班
+                            $yeardatalist[]=array(
+                                'status'=>2,
+                                'date'=>date('Ymd',strtotime($v)),
+                                'term'=>''
+                            );
+                        }
+                    }
+                }
+            }else{
+                throw new \Exception('get year:'.$year.' status fail');
+            }
+        }else{
+            throw new \Exception('get month:'.$year.' fail');
         }
         if(!$yeardatalist){
             throw new \Exception('get year:'.$year.' data fail');
